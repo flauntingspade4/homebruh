@@ -1,27 +1,42 @@
-mod manager;
-mod packager;
+#![feature(format_args_nl)]
 
-use manager::{
-    install::{install_remote, uninstall_remote},
+mod commands;
+
+use commands::{
+    builder::build,
+    install::{install_from_file, install_remote},
     sync::sync,
+    uninstall::uninstall,
 };
 
-use packager::{builder::build, installer::install_local, uninstaller::uninstall_local};
+#[macro_export]
+macro_rules! log {
+    ($left:expr, $right:expr) => {
+        {
+            println!("\x1b[0;32m{}\x1b[0m {}", $left, $right)
+        }
+    };
+    ($left:expr, $($arg:tt)*) => {
+        {
+            println!("\x1b[0;32m{}\x1b[0m {}", $left, format_args_nl!($($arg)*))
+        }
+    }
+}
 
 fn main() -> Result<()> {
     let mut args = std::env::args().skip(1);
 
     if let Some(arg) = args.next() {
         match arg.as_str() {
-            "build" => build()?,
+            "build" => build().unwrap(),
             "install" => match args.next() {
                 Some(package) => match args.next() {
                     Some(inner_package) => {
                         if package == "-i" {
-                            install_local(inner_package)?;
+                            install_from_file(&inner_package)?;
                         }
                     }
-                    None => install_remote(&package)?,
+                    None => install_remote(&package).unwrap(),
                 },
                 None => println!("Usage: {} install [-i] <package>.", env!("CARGO_PKG_NAME")),
             },
@@ -29,14 +44,14 @@ fn main() -> Result<()> {
                 Some(package) => match args.next() {
                     Some(inner_package) => {
                         if package == "-i" {
-                            uninstall_local(inner_package)?;
+                            uninstall(&inner_package).unwrap();
                         }
                     }
-                    None => uninstall_remote(&package)?,
+                    None => uninstall(&package).unwrap(),
                 },
                 None => println!("Usage: {} uninstall [-i] <package>", env!("CARGO_PKG_NAME")),
             },
-            "sync" => sync()?,
+            "sync" => sync().unwrap(),
             _ => help(),
         }
     }
